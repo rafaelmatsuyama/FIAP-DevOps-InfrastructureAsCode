@@ -71,7 +71,7 @@ terraform apply -auto-approve
 1. **Verify Web Endpoint via Curl:**
    Extract public IP and execute an HTTP validation probe:
    ```bash
-   INSTANCE_IP=$(terraform output -raw instance_public_ip 2>/dev/null || aws ec2 describe-instances --filters "Name=tag:Name,Values='Remote Exec Example'" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
+   INSTANCE_IP=$(terraform output -raw instance_public_ip)
    curl -I http://$INSTANCE_IP
    ```
    *Acceptance Criteria:* Probe returns `HTTP/1.1 200 OK` with header `Server: nginx`.

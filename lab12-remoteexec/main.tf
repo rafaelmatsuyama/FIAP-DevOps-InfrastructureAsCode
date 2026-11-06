@@ -49,7 +49,7 @@ resource "aws_instance" "example" {
 
   connection {
     type        = "ssh"
-    user        = "ec2-user" # Para Amazon Linux 2 / AMI oficial
+    user        = "ec2-user"                          # Para Amazon Linux 2 / AMI oficial
     private_key = file("${path.module}/labsuser.pem") # Caminho relativo da chave na pasta do Lab
     host        = self.public_ip
   }
@@ -61,4 +61,9 @@ resource "aws_instance" "example" {
       "sudo systemctl start nginx"
     ]
   }
+}
+
+output "instance_public_ip" {
+  description = "IP público da instância EC2 provisionada"
+  value       = aws_instance.example.public_ip
 }
