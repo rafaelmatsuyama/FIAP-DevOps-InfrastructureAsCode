@@ -1,7 +1,7 @@
 # Enterprise Infrastructure as Code & Cloud Automation Blueprint
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/rafaelmatsuyama/FIAP-DevOps-InfrastructureAsCode)
-[![FIAP MBA](https://img.shields.io/badge/FIAP-MBA%20DevOps%20Engineering-ED145B?logo=fiap&logoColor=white)](https://www.fiap.com.br/mba/mba-em-devops-engineering/)
+[![FIAP MBA](https://img.shields.io/badge/FIAP-MBA%20DevOps%20Engineering-ED145B?logo=fiap&logoColor=white)](https://www.fiap.com.br/mba/)
 [![Release](https://img.shields.io/badge/Release-v2026.1.0-007EC6?logo=github)](https://github.com/rafaelmatsuyama/FIAP-DevOps-InfrastructureAsCode/releases)
 ![Terraform 1.9+](https://img.shields.io/badge/Terraform-1.9%2B-844FBA?logo=terraform&logoColor=white)
 ![Ansible](https://img.shields.io/badge/Ansible-Core%202.16%2B-EE0000?logo=ansible&logoColor=white)
@@ -11,7 +11,7 @@
 ![Code License](https://img.shields.io/badge/Code-Apache%202.0-green.svg)
 ![Content License](https://img.shields.io/badge/Content-CC%20BY--NC--SA%204.0-orange.svg)
 
-> **Official reference architecture and interactive hands-on lab suite developed for the [MBA em DevOps Engineering](https://www.fiap.com.br/mba/mba-em-devops-engineering/) at FIAP.**  
+> **Official reference architecture and interactive hands-on lab suite developed for the [MBA em DevOps Engineering](https://www.fiap.com.br/mba/) at FIAP.**  
 > *Covering Declarative Terraform, AWS Cloud Infrastructure, Remote State Management & Locking, Amazon EKS, Shift-Left CI/CD with GitHub Actions & Trivy, Multi-Host Configuration Management with Ansible, and Zero-Touch Hybrid Orchestration.*
 
 ---
