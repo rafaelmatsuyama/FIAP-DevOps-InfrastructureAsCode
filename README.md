@@ -37,12 +37,7 @@ This repository establishes an end-to-end, production-grade **Reference Architec
 
 ## 🏗️ End-to-End Architectural Flow
 
-```text
-[ Developer Workspace ] ──> [ Git Repository ] ──> [ CI/CD Quality Gate ] ──> [ Cloud Runtime ]
-  • Codespaces DevContainer    • Feature Branch      • terraform fmt / validate   • AWS Cloud (VPC, EC2, EKS)
-  • LocalStack Emulation       • Pull Request        • Trivy Security Scanner     • S3 Remote State + Lock
-  • Terraform + Ansible CLI    • Main Branch         • Automated Deployment       • Ansible Zero-Touch Setup
-```
+![End-to-End Infrastructure as Code & Automation Flow](assets/architectural_flow.jpg)
 
 ### Lifecycle Architecture Matrix
 
