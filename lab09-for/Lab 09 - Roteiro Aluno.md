@@ -1,26 +1,36 @@
-# LAB 09: Expressões Avançadas com Loops For (Transformações de Dados)
+# Lab 09 - Expressões Avançadas com Loops For (Transformações de Dados)
 
-Este laboratório prático guiará você no uso de loops `for` no Terraform para realizar transformações e processamentos complexos de dados. Você aprenderá como ler uma lista ou mapa de configurações locais, transformar essas estruturas dinamicamente em novos formatos e passá-las para os recursos de infraestrutura. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender a sintaxe e o uso das expressões com loops `for` no HCL.
-- Transformar mapas chave-valor em listas de objetos e vice-versa usando expressões inline.
-- Associar múltiplos tipos de recursos (`t2.micro`, `t2.small`, `t2.medium`) a instâncias dinamicamente.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, Expressões `for` do HCL  
+**Duração Estimada:** 25 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente
-1. Certifique-se de que suas credenciais temporárias da `AWS Academy` estão ativas no arquivo `~/.aws/credentials` (conforme Passo 1 do Lab 03).
+Dominar o poder das expressões funcionais com loops `for` no HCL para transformação dinâmica de estruturas de dados:
+1. Compreender a sintaxe de compreensão de listas e mapas (`[for k, v in col : ...]` e `{for item in list : k => v}`).
+2. Transformar dicionários de configuração em listas estruturadas de objetos.
+3. Consumir coleções transformadas diretamente no meta-argumento `for_each` para provisionar recursos com especificações heterogêneas.
+4. Exportar mapas de saída filtrados utilizando cláusulas condicionais `if`.
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Abra o arquivo `main.tf` na pasta `lab09-for/` e analise a seção `locals`:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab09-for
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Análise das Transformações em `locals`
+Abra o arquivo `main.tf` e examine a manipulação das estruturas locais:
 ```hcl
 locals {
   instance_types = {
@@ -35,14 +45,14 @@ locals {
   }]
 }
 ```
+- **`instance_types`:** Dicionário mapeando hostname para o tamanho da instância EC2 desejada.
+- **`instance_list`:** Itera sobre as tuplas `name, type` e projeta uma lista de objetos padronizados.
 
-*   `instance_types` é um mapa mapeando nomes de servidores a tipos de instância correspondentes.
-*   `instance_list` utiliza uma expressão `for` para percorrer o mapa `instance_types` e construir uma lista de objetos contendo chaves `name` e `type`.
-
-Observe também a declaração do recurso principal:
+### Passo 2: Projeção de Mapa para o `for_each`
+Observe como a lista é reconvertida em mapa único para consumo pelo `for_each`:
 ```hcl
 resource "aws_instance" "for_example" {
-  for_each      = {for instance in local.instance_list : instance.name => instance}
+  for_each      = { for instance in local.instance_list : instance.name => instance }
   ami           = "ami-0de716d6197524dd9"
   instance_type = each.value.type
 
@@ -51,47 +61,48 @@ resource "aws_instance" "for_example" {
   }
 }
 ```
-*   O `for_each` realiza uma transformação reversa de lista de objetos para mapa (usando `instance.name` como chave exclusiva), mapeando o valor do recurso.
-*   Consumimos as propriedades dinâmicas: o tipo de instância é definido por `each.value.type` e o nome da tag pelo `each.key`.
 
----
-
-### Passo 3: Executar os Comandos do Terraform
-No terminal do seu Codespaces, navegue para a pasta e aplique a infraestrutura:
-
-1. **Navegar para a pasta do Lab 09:**
-   ```bash
-   cd lab09-for
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Verificar o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-   > **Dica Visual:** No output do `terraform plan`, verifique como cada uma das instâncias possui atributos diferenciados, como tipos `t2.micro`, `t2.small` e `t2.medium` associados aos nomes correspondentes.
-4. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Verificar Instâncias no Console:**
-   Acesse o Console do EC2 e valide que 3 instâncias foram criadas com os nomes (`web1`, `web2`, `web3`) e seus respectivos tipos de instância (`t2.micro`, `t2.small`, `t2.medium`).
-2. **Experimentar Alterações:**
-   Adicione um quarto item ao bloco local `instance_types` (ex: `web4 = "t2.micro"`). Execute um `terraform plan` e note que a infraestrutura se adapta dinamicamente criando a nova instância mapeada na lista.
-
----
-
-## 🧹 Limpeza do Ambiente
-Para evitar cobranças, remova a infraestrutura executando:
+### Passo 3: Execução e Aplicação
 ```bash
-terraform destroy
+terraform init
+terraform plan
+terraform apply -auto-approve
 ```
-*Digite **`yes`** para confirmar a destruição.*
+*Repare no plano como `web1` recebe `t2.micro`, `web2` recebe `t2.small` e `web3` recebe `t2.medium`.*
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação via AWS CLI:**
+   Liste as instâncias criadas com seus respectivos tipos de máquina:
+   ```bash
+   aws ec2 describe-instances --filters "Name=tag:Name,Values='web1','web2','web3'" --query "Reservations[*].Instances[*].[InstanceId,InstanceType,Tags[?Key=='Name'].Value|[0]]" --output table
+   ```
+   *Critério de Aceite:* Cada instância deve apresentar o `InstanceType` correspondente à regra definida no dicionário.
+2. **Inspeção de Outputs:**
+   ```bash
+   terraform output
+   ```
+
+---
+
+## 🧹 Cleanup
+
+Desprovisione a infraestrutura para economizar créditos:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Filtragem Condicional em Expressão For:** Crie um `output "micro_instances"` que utilize uma cláusula `if` na compreensão para retornar apenas os nomes dos servidores cujo tipo seja `"t2.micro"`:
+   ```hcl
+   output "micro_instances" {
+     value = [for k, v in local.instance_types : k if v == "t2.micro"]
+   }
+   ```
+2. **Mapeamento de Hostnames para IPs:** Construa uma expressão que gere um dicionário `{ "web1" => "IP_PUBLICO_1", ... }` a partir do recurso `aws_instance.for_example`.

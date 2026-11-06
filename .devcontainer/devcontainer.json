@@ -1,0 +1,32 @@
+{
+  "name": "FIAP MBA DevOps - Infrastructure as Code",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "1.9.8",
+      "tflint": "latest"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/python:3": {
+      "version": "3.11"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terraform.languageServer.enable": true,
+        "files.trimTrailingWhitespace": true
+      },
+      "extensions": [
+        "hashicorp.terraform",
+        "redhat.ansible",
+        "amazonwebservices.aws-toolkit-vscode",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "postCreateCommand": "pip install --no-cache-dir ansible",
+  "forwardPorts": [4566, 80, 8080]
+}

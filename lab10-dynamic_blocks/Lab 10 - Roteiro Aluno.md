@@ -1,26 +1,36 @@
-# LAB 10: Blocos Dinâmicos (Dynamic Blocks no Terraform)
+# Lab 10 - Blocos Dinâmicos (Dynamic Blocks no Terraform)
 
-Este laboratório prático guiará você no uso de **Blocos Dinâmicos** (`dynamic`) no Terraform. Você aprenderá como automatizar a declaração de sub-blocos de recursos repetitivos (como configurações de discos, portas ou regras de segurança), reduzindo a duplicação de código e tornando seus manifestos altamente parametrizáveis. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender a finalidade e a sintaxe dos blocos `dynamic` no Terraform.
-- Iterar sobre uma lista de objetos para configurar múltiplos sub-recursos.
-- Provisionar instâncias `EC2` com múltiplos volumes EBS (`ebs_block_device`) gerados sob demanda.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, EBS, `dynamic` blocks  
+**Duração Estimada:** 20 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente
-1. Certifique-se de que suas credenciais temporárias da `AWS Academy` estão ativas no arquivo `~/.aws/credentials` (conforme Passo 1 do Lab 03).
+Aprender a eliminar a duplicação de sub-blocos estruturais aninhados em manifestos Terraform utilizando `dynamic`:
+1. Compreender a finalidade e a semântica de blocos dinâmicos (`dynamic "<block>" { for_each = ... content { ... } }`).
+2. Iterar sobre listas de configurações de armazenamento para anexar múltiplos volumes EBS (`ebs_block_device`) a uma instância EC2.
+3. Mapear propriedades internas consumindo o iterador nominal de contexto (`ebs_block_device.value.*`).
+4. Auditar a criação de volumes em bloco no console e via CLI da AWS.
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Abra o arquivo `main.tf` na pasta `lab10-dynamic_blocks/` e analise a estrutura do bloco dinâmico:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab10-dynamic_blocks
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Análise do Bloco Dinâmico no `main.tf`
+Abra o arquivo `main.tf` e examine a declaração do recurso:
 ```hcl
 resource "aws_instance" "example" {
   ami           = "ami-0de716d6197524dd9"
@@ -37,49 +47,51 @@ resource "aws_instance" "example" {
   }
 }
 ```
+- **`dynamic "ebs_block_device"`:** Declara que múltiplos sub-blocos repetitivos serão injetados dentro do recurso `aws_instance`.
+- **`for_each = var.ebs_volumes`:** Itera sobre a lista de objetos definidos nas variáveis.
+- **`content`:** Constrói o corpo de cada sub-bloco consumindo `ebs_block_device.value`.
 
-*   `dynamic "ebs_block_device"` cria múltiplos blocos de disco adicionados à instância EC2.
-*   `for_each = var.ebs_volumes` indica qual lista de objetos deve ser percorrida.
-*   O bloco `content` mapeia as propriedades de cada item iterado usando a variável especial `ebs_block_device.value.*`.
-
----
-
-### Passo 3: Executar os Comandos do Terraform
-No terminal do seu Codespaces, navegue para a pasta e aplique a infraestrutura:
-
-1. **Navegar para a pasta do Lab 10:**
-   ```bash
-   cd lab10-dynamic_blocks
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Verificar o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-   > **Nota Visual:** Repare no output do planejamento que o Terraform lista uma única instância EC2, porém contendo dois blocos de disco adicionais configurados (`ebs_block_device`) conforme os valores padrão da variável `ebs_volumes`.
-4. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Verificar Instâncias no Console:**
-   Acesse o console do Amazon EC2, selecione a instância criada ("Local Exec Example" ou sem tag name configurada) e vá na aba de **Storage (Armazenamento)**.
-2. **Confirmar Volumes Adicionados:**
-   Valide que a instância possui o volume raiz (geralmente `/dev/xvda`) e mais dois volumes anexados adicionais nas portas configuradas: `/dev/sdb` (com 10GB) e `/dev/sdc` (com 20GB).
-
----
-
-## 🧹 Limpeza do Ambiente
-Para evitar cobranças, remova a infraestrutura executando:
+### Passo 2: Inicialização e Planejamento
 ```bash
-terraform destroy
+terraform init
+terraform plan
 ```
-*Digite **`yes`** para confirmar a destruição.*
+*Observe que o plano exibirá uma única instância computacional contendo múltiplos blocos de disco adicionais configurados.*
+
+### Passo 3: Provisionamento Declarativo
+```bash
+terraform apply -auto-approve
+```
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação via AWS CLI:**
+   Consulte os volumes anexados à instância:
+   ```bash
+   aws ec2 describe-volumes --filters "Name=attachment.device,Values='/dev/sdb','/dev/sdc'" --query "Volumes[*].[VolumeId,Size,VolumeType,State]" --output table
+   ```
+   *Critério de Aceite:* Devem figurar os volumes adicionais anexados com os tamanhos configurados (10GB e 20GB).
+2. **Inspeção de Estado:**
+   ```bash
+   terraform show
+   ```
+   *Critério de Aceite:* O bloco `ebs_block_device` exibe os dois dispositivos de armazenamento persistidos no state.
+
+---
+
+## 🧹 Cleanup
+
+Desprovisione a instância e seus volumes anexados:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Dynamic Ingress em Security Group:** Aplique o padrão `dynamic` para gerar regras de entrada (`dynamic "ingress"`) em um recurso `aws_security_group`, iterando sobre uma lista de portas `[22, 80, 443]`.
+2. **Criptografia Automática:** Adicione a flag `encrypted = true` dentro do bloco `content` dos volumes EBS para garantir criptografia em repouso.

@@ -1,114 +1,111 @@
-# LAB 13: Importação de Infraestrutura Existente (Terraform Import)
+# Lab 13 - Importação de Infraestrutura Existente (Terraform Import)
 
-Este laboratório prático guiará você no processo de importação de infraestruturas pré-existentes (*brownfield*) para dentro do gerenciamento do Terraform utilizando o comando `terraform import`. Você aprenderá como vincular recursos criados manualmente no Console AWS ao estado (`terraform.tfstate`) e ao código HCL, permitindo assumir o controle e governança da infraestrutura sem a necessidade de recriá-la. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender a diferença entre cenários de infraestrutura *Greenfield* (novos) e *Brownfield* (existentes).
-- Declarar recursos "esqueleto" no arquivo `main.tf` para receber o estado importado.
-- Executar o comando CLI `terraform import` associando o ID do recurso AWS ao bloco HCL.
-- Inspecionar e alinhar discrepâncias (*drift*) entre o estado importado e a configuração no código via `terraform state show` e `terraform plan`.
-- Executar alterações e o descomissionamento (`terraform destroy`) do recurso sob governança do Terraform.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, `terraform import`  
+**Duração Estimada:** 25 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente e Identificação do Recurso Existente
-1. Certifique-se de que suas credenciais temporárias da `AWS Academy` estão ativas no arquivo `~/.aws/credentials`.
-2. Para simular um recurso legado/existente (*brownfield*), utilize uma instância EC2 já ativa na sua conta da AWS Academy (ou crie uma manualmente via Console AWS com o nome `"Instância Legada"`).
-3. Inspecione o Console AWS e anote o **ID da Instância** (formato: `i-0123456789abcdef0`).
+Aprender a incorporar recursos legados criados manualmente (*brownfield*) sob a governança do Terraform sem tempo de inatividade:
+1. Compreender os desafios de absorção de infraestruturas legadas em pipelines de IaC.
+2. Declarar blocos de recursos esqueleto no `main.tf` para acomodar o estado importado.
+3. Executar o comando `terraform import` associando o identificador físico da nuvem (`i-0...`) ao endereço lógico HCL.
+4. Auditar e eliminar divergências de configuração (*drift reconciliation*) via `terraform state show` e `terraform plan`.
+5. Modificar e descomissionar recursos importados de forma totalmente automatizada.
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Abra o arquivo `main.tf` na pasta `lab13-import/` e observe o bloco declarativo inicial:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Uma instância EC2 existente na conta (ou criada via console/CLI com tag `Instância Legada`).
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab13-import
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Identificação do Recurso Físico
+Capture o ID da instância existente na AWS:
+```bash
+INSTANCE_ID=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].InstanceId" --output text)
+echo "ID Identificado: $INSTANCE_ID"
+```
+
+### Passo 2: Estruturação do Bloco Esqueleto no `main.tf`
+Abra `main.tf` e certifique-se de que o recurso alvo está declarado:
 ```hcl
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = "us-east-1"
-}
-
 resource "aws_instance" "example" {
-  ami           = "ami-00ca32bbc84273381"
-  instance_type = "t3.micro"
+  # Os atributos reais serão conciliados após o import
+  ami           = "ami-placeholder"
+  instance_type = "t2.micro"
 
   tags = {
-    Name = "Teste Import"
+    Name = "Recurso Brownfield"
   }
 }
 ```
 
-*   O Terraform exige que o bloco de recurso (`resource "aws_instance" "example"`) já esteja declarado no arquivo `.tf` antes da execução do comando CLI de importação.
-
----
-
-### Passo 3: Executar a Importação (`terraform import`)
-No terminal do seu Codespaces, navegue para a pasta e execute a importação:
-
-1. **Navegar para a pasta do Lab 13:**
-   ```bash
-   cd lab13-import
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Executar o Comando de Importação:**
-   Substitua `i-0123456789abcdef0` pelo ID real da sua instância EC2 obtido no Passo 1:
-   ```bash
-   terraform import aws_instance.example i-0123456789abcdef0
-   ```
-   *Você verá a mensagem: `Import successful!` indicando que o recurso remoto foi mapeado para o arquivo `terraform.tfstate`.*
-
----
-
-### Passo 4: Sincronização e Correção de Drift
-Após a importação, o arquivo de estado contém todos os detalhes da instância real, mas o código HCL no `main.tf` pode ter divergências (*drift*).
-
-1. **Inspecionar o Estado Importado:**
-   ```bash
-   terraform state show aws_instance.example
-   ```
-2. **Verificar Diferenças com o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-   *Se o Terraform indicar intenção de substituir ou alterar atributos (como `ami` ou `instance_type`), edite o `main.tf` ajustando os valores para coincidirem exatamente com a instância real, até que o `terraform plan` retorne:*
-   `No changes. Your infrastructure matches the configuration.`
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Testar Governança Pós-Importação:**
-   Altere a tag `Name` no arquivo `main.tf`:
-   ```hcl
-     tags = {
-       Name = "Instancia Importada e Gerenciada"
-     }
-   ```
-2. **Aplicar a Alteração:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e verifique no Console AWS que o nome da instância foi atualizado com sucesso via Terraform.*
-
----
-
-## 🧹 Limpeza do Ambiente
-Como a instância agora está sob controle do Terraform, você pode desprovisioná-la normalmente:
+### Passo 3: Executar a Importação de Estado
 ```bash
-terraform destroy
+terraform init
+terraform import aws_instance.example $INSTANCE_ID
 ```
-*Digite **`yes`** para confirmar a destruição da instância.*
+*O Terraform consulta a API da AWS, constrói a representação JSON do recurso e grava no arquivo local `terraform.tfstate` com mensagem `Import successful!`.*
+
+### Passo 4: Reconciliação de Drift (Zero-Drift Convergence)
+Inspecione os atributos reais gravados no state:
+```bash
+terraform state show aws_instance.example
+```
+Compare com o planejamento:
+```bash
+terraform plan
+```
+*Edite os atributos (`ami`, `instance_type`, `tags`) no `main.tf` até que o planejamento indique estritamente:*
+`No changes. Your infrastructure matches the configuration.`
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação de Governança Ativa:**
+   Altere a tag `Name` no `main.tf` para `"Instância Importada e Gerenciada"` e execute:
+   ```bash
+   terraform apply -auto-approve
+   ```
+2. **Confirmação via AWS CLI:**
+   ```bash
+   aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[*].Instances[*].Tags[?Key=='Name'].Value|[0]" --output text
+   ```
+   *Critério de Aceite:* A tag retornada deve ser `Instância Importada e Gerenciada`, provando que o recurso manual está sob controle do código.
+
+---
+
+## 🧹 Cleanup
+
+Descomissione o recurso governado pelo Terraform:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Bloco `import` Declarativo (Terraform 1.5+):** Em vez do comando CLI manual, explore a sintaxe declarativa moderna do Terraform:
+   ```hcl
+   import {
+     to = aws_instance.example
+     id = "i-0123456789abcdef0"
+   }
+   ```
+   Execute `terraform plan -generate-config-out=generated.tf` e observe como o Terraform gera o HCL correspondente automaticamente.
+2. **Importação de Security Group:** Realize a importação de um grupo de segurança existente (`aws_security_group`) com suas respectivas regras de firewall.

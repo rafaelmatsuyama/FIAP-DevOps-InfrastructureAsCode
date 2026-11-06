@@ -1,0 +1,49 @@
+# Terraform Artifacts & Local State (Segurança Crítica)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# AWS, SSH & Cloud Credentials (Segurança Crítica)
+.aws/
+credentials
+config
+*.pem
+*.key
+*.id_rsa
+*.id_rsa.pub
+.env
+.env.*
+
+# Ansible Artifacts & Caches
+*.retry
+.ansible/
+
+# Python & Ambientes Virtuais
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Arquivos de Sistema & IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 🛡️ Guardrails Docentes: Gabaritos e Soluções (Confidencial)
+*Gabarito*
+*gabarito*
+*Solution*
+*solution*

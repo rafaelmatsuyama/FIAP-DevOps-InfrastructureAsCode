@@ -1,26 +1,36 @@
-# LAB 11: Provisionadores Locais (Local Exec Provisioner)
+# Lab 11 - Provisionadores Locais (Local Exec Provisioner)
 
-Este laboratório prático guiará você no uso do provisionador local (`local-exec`) no Terraform. Você aprenderá como acionar a execução de comandos, scripts ou integrações na sua própria máquina de controle (ou terminal do Codespaces) após a criação bem-sucedida de um recurso na nuvem. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender a finalidade e as limitações dos provisionadores no Terraform.
-- Configurar o provisionador `local-exec` dentro de um recurso declarativo.
-- Executar comandos do sistema operacional local para persistir dados pós-provisionamento.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, Provisioner `local-exec`  
+**Duração Estimada:** 20 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente
-1. Certifique-se de que suas credenciais temporárias da `AWS Academy` estão ativas no arquivo `~/.aws/credentials` (conforme Passo 1 do Lab 03).
+Compreender a atuação e as fronteiras de responsabilidade dos provisionadores locais (`local-exec`) no Terraform:
+1. Analisar o ciclo de execução de lifecycle hooks pós-criação de recursos.
+2. Capturar atributos dinâmicos da infraestrutura em nuvem (como IPs e IDs) e persisti-los localmente via shell.
+3. Compreender as desvantagens dos provisionadores como anti-pattern de portabilidade e quando utilizá-los legitimamente.
+4. Auditar a geração de artefatos de inventário na máquina controladora.
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Abra o arquivo `main.tf` na pasta `lab11-localexec/` e observe o bloco de provisionamento:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab11-localexec
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Análise do Bloco `provisioner "local-exec"` no `main.tf`
+Abra o arquivo `main.tf` e inspecione o recurso:
 ```hcl
 resource "aws_instance" "example" {
   ami           = "ami-0de716d6197524dd9"
@@ -31,59 +41,56 @@ resource "aws_instance" "example" {
   }
 
   provisioner "local-exec" {
-    command = "echo 'Instância criada com sucesso!' > instance_info.txt"
+    command = "echo 'Instância criada: ${self.id} | IP: ${self.public_ip}' > instance_info.txt"
   }
 }
 ```
+- **`local-exec`:** Dispara a instrução shell localmente na máquina onde o Terraform está rodando assim que a criação na AWS é concluída.
+- **`self`:** Objeto especial que permite acessar atributos do próprio recurso durante o provisionamento.
 
-*   `provisioner "local-exec"` executa o shell script local assim que a instância atinge o estado de criação concluída.
-*   `command` define a instrução literal do terminal que será invocada.
-
----
-
-### Passo 3: Executar os Comandos do Terraform
-No terminal do seu Codespaces, navegue para a pasta e aplique a infraestrutura:
-
-1. **Navegar para a pasta do Lab 11:**
-   ```bash
-   cd lab11-localexec
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Verificar o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-4. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
+### Passo 2: Execução do Ciclo de Vida
+```bash
+terraform init
+terraform plan
+terraform apply -auto-approve
+```
+*Observe a saída no terminal: o Terraform executa o comando `local-exec` e exibe o log de execução diretamente no stdout.*
 
 ---
 
-## 🔍 Pontos de Validação Prática
+## 🧪 Validação & Critérios de Aceite
 
-1. **Confirmar Execução Local:**
-   Ao término do `terraform apply`, verifique a lista de arquivos do seu diretório atual no Codespaces executando:
-   ```bash
-   ls -la
-   ```
-2. **Validar Conteúdo do Arquivo:**
-   Confirme se um novo arquivo chamado `instance_info.txt` foi gerado localmente e inspecione seu conteúdo com:
+1. **Inspeção do Arquivo de Inventário Local:**
+   Verifique o arquivo gerado pelo provisionador:
    ```bash
    cat instance_info.txt
    ```
-   *O arquivo deve exibir o texto: "Instância criada com sucesso!".*
+   *Critério de Aceite:* O arquivo deve conter o ID da instância e o endereço IP público alocado.
+2. **Inspeção de Logs do Terraform:**
+   ```bash
+   terraform show
+   ```
 
 ---
 
-## 🧹 Limpeza do Ambiente
-Para evitar cobranças, remova a infraestrutura executando:
+## 🧹 Cleanup
+
+Para destruir a instância e higienizar arquivos locais:
 ```bash
-terraform destroy
+terraform destroy -auto-approve
+rm -f instance_info.txt
+cd ..
 ```
-*Digite **`yes`** para confirmar a destruição.*
-*Nota: A destruição do recurso não remove automaticamente o arquivo local `instance_info.txt`, sendo necessário apagá-lo manualmente via `rm instance_info.txt` se desejar limpar o diretório.*
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Trigger on Destroy:** Configure um segundo bloco de provisionamento que execute apenas na destruição do recurso:
+   ```hcl
+   provisioner "local-exec" {
+     when    = destroy
+     command = "echo 'Instância destruída em: $(date)' >> audit.log"
+   }
+   ```
+2. **Exportação de Inventário Ansible:** Ajuste o comando para gravar o IP público em um formato de inventário INI do Ansible (`echo "${self.public_ip} ansible_user=ec2-user" > hosts.ini`).

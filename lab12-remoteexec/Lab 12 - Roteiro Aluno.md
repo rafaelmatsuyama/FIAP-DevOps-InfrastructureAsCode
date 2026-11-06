@@ -1,34 +1,43 @@
-# LAB 12: Provisionadores Remotos (Remote Exec Provisioner)
+# Lab 12 - Provisionadores Remotos (Remote Exec Provisioner)
 
-Este laboratório prático guiará você no uso do provisionador remoto (`remote-exec`) no Terraform. Você aprenderá como configurar conexões SSH para acessar recursos na nuvem recém-criados e executar comandos remotos no sistema operacional da instância (como a instalação de pacotes e inicialização de servidores web). Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Configurar o bloco de conexão (`connection`) SSH no Terraform utilizando chaves privadas `.pem`.
-- Utilizar o provisionador `remote-exec` para gerenciar recursos remotamente.
-- Instalar e inicializar o servidor web `Nginx` automaticamente na inicialização da máquina.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, SSH, Provisioner `remote-exec`, Nginx  
+**Duração Estimada:** 25 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente e Chaves SSH
-Como o Terraform fará uma conexão remota via SSH, precisamos de uma chave SSH e de regras de rede apropriadas:
-
-1. **Localizar sua chave privada:**
-   A `AWS Academy` fornece uma chave privada padrão em formato `.pem`. No diretório `lab12-remoteexec/`, certifique-se de que o arquivo `labsuser.pem` existe.
-2. **Ajustar permissões da chave privada:**
-   No Linux/MacOS (ou terminal do Codespaces), as chaves SSH exigem permissões estritas para funcionar. Ajuste as permissões do arquivo rodando:
-   ```bash
-   chmod 400 lab12-remoteexec/labsuser.pem
-   ```
+Aprender a executar automações de configuração no sistema operacional de instâncias EC2 via SSH utilizando `remote-exec`:
+1. Configurar blocos de conexão remota (`connection`) SSH no Terraform com chaves privadas `.pem`.
+2. Compreender a dependência estrita entre Security Groups (portas 22 e 80) e a execução do provisionador para evitar timeouts mascarados.
+3. Executar scripts de bootstrap e instalação de pacotes (`yum update`, `nginx`) de forma não-interativa.
+4. Testar o serviço web provisionado e analisar trade-offs frente ao `user_data` ou ferramentas de gerenciamento de configuração.
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Observe os blocos de conexão e provisionador no arquivo:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Chave privada `labsuser.pem` (fornecida no laboratório da AWS Academy).
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab12-remoteexec
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Ajuste de Permissões da Chave SSH
+No ambiente Linux do Codespaces, chaves privadas exigem permissões restritas (`400`):
+```bash
+chmod 400 labsuser.pem
+```
+
+### Passo 2: Análise da Conexão e do Provisionador no `main.tf`
+Abra o arquivo `main.tf` e inspecione os blocos:
 ```hcl
   connection {
     type        = "ssh"
@@ -45,46 +54,46 @@ Observe os blocos de conexão e provisionador no arquivo:
     ]
   }
 ```
+*Atenção de Arquitetura:* O recurso `aws_instance` deve obrigatoriamente associar um Security Group que libere a porta 22 (SSH) na entrada para que o provisionador consiga se conectar. Caso contrário, o Terraform entrará em loop de timeout.
 
-*   `connection` define os detalhes de transporte SSH. O `self.public_ip` referencia automaticamente o IP público da própria instância criada.
-*   `provisioner "remote-exec"` executa a lista de comandos do bloco `inline` sequencialmente no servidor remoto.
-
----
-
-### Passo 3: Executar os Comandos do Terraform
-No terminal do seu Codespaces, navegue para a pasta e aplique a infraestrutura:
-
-1. **Navegar para a pasta do Lab 12:**
-   ```bash
-   cd lab12-remoteexec
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
-   *(Nota: O apply pode demorar um pouco mais nesta etapa, pois o Terraform aguardará a instância inicializar, estabelecerá a conexão SSH e executará o update e instalação do Nginx).*
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Validar o Funcionamento do Nginx:**
-   Ao término da execução com sucesso, o terminal exibirá os detalhes de provisionamento. Copie o IP público da instância e cole no seu navegador:
-   ```text
-   http://IP_PUBLICO_DA_INSTANCIA
-   ```
-   *Confirme se a página de boas-vindas do Nginx é carregada.*
-
----
-
-## 🧹 Limpeza do Ambiente
-Para evitar cobranças acumuladas na conta de testes, destrua os recursos criados:
+### Passo 3: Execução e Bootstrapping
 ```bash
-terraform destroy
+terraform init
+terraform plan
+terraform apply -auto-approve
 ```
-*Digite **`yes`** para confirmar a destruição.*
+*O Terraform aguardará a inicialização do daemon SSH na EC2, estabelecerá a sessão criptografada e transmitirá o log dos comandos do Nginx em tempo real.*
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação do Endpoint Web via Curl:**
+   Obtenha o IP público da instância e execute um teste HTTP:
+   ```bash
+   INSTANCE_IP=$(terraform output -raw instance_public_ip 2>/dev/null || aws ec2 describe-instances --filters "Name=tag:Name,Values='Remote Exec Example'" --query "Reservations[*].Instances[*].PublicIpAddress" --output text)
+   curl -I http://$INSTANCE_IP
+   ```
+   *Critério de Aceite:* O servidor deve responder com status `HTTP/1.1 200 OK` e cabeçalho `Server: nginx`.
+2. **Inspeção de Processos via SSH Manual:**
+   ```bash
+   ssh -i labsuser.pem ec2-user@$INSTANCE_IP "systemctl status nginx"
+   ```
+   *Critério de Aceite:* O serviço deve estar com status `active (running)`.
+
+---
+
+## 🧹 Cleanup
+
+Desprovisione a infraestrutura:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Substituição por `user_data`:** Avalie o anti-pattern do `remote-exec` (que exige porta 22 aberta na nuvem) e refatore o provisionamento para utilizar `user_data` nativo com `cloud-init`.
+2. **Deploy de Aplicação Customizada:** Adicione um provisionador do tipo `file` para transferir um arquivo `index.html` local diretamente para `/usr/share/nginx/html/index.html` antes de iniciar o Nginx.

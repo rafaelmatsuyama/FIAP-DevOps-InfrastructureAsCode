@@ -1,26 +1,36 @@
-# LAB 08: Estruturas de Repetição com For Each (Mapeamento de Instâncias)
+# Lab 08 - Estruturas de Repetição com For Each (Mapeamento de Instâncias)
 
-Este laboratório prático guiará você no uso do argumento especial `for_each` no Terraform. Você aprenderá a iterar sobre coleções de dados (como listas convertidas em conjuntos ou mapas) para criar recursos de forma independente, sem as limitações de acoplamento por índice numérico do `count`. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender a diferença conceitual e prática entre os argumentos `count` e `for_each`.
-- Utilizar conjuntos (`set`) para controle de provisionamento único.
-- Mapear atributos e chaves dinâmicas usando a variável interna `each.value` e `each.key`.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, Meta-argumento `for_each`  
+**Duração Estimada:** 20 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente
-1. Certifique-se de que suas credenciais temporárias da `AWS Academy` estão ativas no arquivo `~/.aws/credentials` (conforme Passo 1 do Lab 03).
+Dominar o meta-argumento `for_each` para gerenciamento determinístico de coleções sem vulnerabilidades de indexação:
+1. Compreender as vantagens arquiteturais do `for_each` sobre o `count` na prevenção de destruições acidentais em cascata.
+2. Utilizar a função de conversão `toset()` para transformar listas em conjuntos de chaves únicas.
+3. Mapear atributos dinâmicos consumindo as variáveis de contexto `each.key` e `each.value`.
+4. Inspecionar o mapeamento de chaves nominais no arquivo de estado (`aws_instance.foreach_example["web1"]`).
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Abra o arquivo `main.tf` na pasta `lab08-foreach/` e analise o código:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab08-foreach
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Análise do Mapeamento no `main.tf`
+Abra o arquivo `main.tf` e analise a declaração:
 ```hcl
 variable "instance_names" {
   type    = list(string)
@@ -37,48 +47,60 @@ resource "aws_instance" "foreach_example" {
   }
 }
 ```
+- **`toset()`:** Converte a lista em um conjunto com garantia de chaves exclusivas.
+- **`each.value`:** Vincula a string da iteração atual como tag `Name` da respectiva instância EC2.
 
-*   `for_each` exige uma coleção de chaves exclusivas. Por isso, a lista de strings `var.instance_names` é convertida em um conjunto utilizando a função `toset()`.
-*   O Terraform criará uma instância para cada item do conjunto. O valor do item atual da iteração é acessado via `each.value`.
-
----
-
-### Passo 3: Executar os Comandos do Terraform
-No terminal do seu Codespaces, navegue para a pasta e aplique a infraestrutura:
-
-1. **Navegar para a pasta do Lab 08:**
-   ```bash
-   cd lab08-foreach
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Verificar o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-   > **Nota Visual:** Observe que o Terraform identifica os recursos usando chaves em string em vez de índices, como `aws_instance.foreach_example["web1"]`, `aws_instance.foreach_example["web2"]` e `aws_instance.foreach_example["web3"]`.
-4. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Verificar Instâncias no Console:**
-   Acesse o console do Amazon EC2 e valide que existem 3 novas instâncias executando com as tags de nome correspondentes: `web1`, `web2` e `web3`.
-2. **Entender a independência das chaves:**
-   Se você alterar a variável default no código para remover `web2` e incluir `web4` (`["web1", "web3", "web4"]`), ao rodar `terraform apply` note que o Terraform destruirá apenas `web2` e criará `web4`. O recurso `web3` não sofrerá alteração (diferente do comportamento do `count` que recriaria recursos caso mudássemos a ordem).
-
----
-
-## 🧹 Limpeza do Ambiente
-Para evitar cobranças, remova a infraestrutura executando:
+### Passo 2: Inicialização e Planejamento
 ```bash
-terraform destroy
+terraform init
+terraform plan
 ```
-*Digite **`yes`** para confirmar a destruição.*
+*Observe que o Terraform rastreia cada recurso através de chaves nominais (`["web1"]`, `["web2"]`, `["web3"]`) em vez de índices ordinais numéricos.*
+
+### Passo 3: Provisionamento Declarativo
+```bash
+terraform apply -auto-approve
+```
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação via AWS CLI:**
+   Liste as instâncias criadas:
+   ```bash
+   aws ec2 describe-instances --filters "Name=tag:Name,Values='web1','web2','web3'" --query "Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key=='Name'].Value|[0]]" --output table
+   ```
+   *Critério de Aceite:* As três instâncias devem figurar com estado `running` e os nomes declarados.
+2. **Inspeção de Chaves no State:**
+   ```bash
+   terraform state list
+   ```
+   *Critério de Aceite:* Cada recurso é referenciado pelo seu rótulo string entre aspas (`aws_instance.foreach_example["web1"]`).
+
+---
+
+## 🧹 Cleanup
+
+Desprovisione os recursos para evitar custos na nuvem:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Iteração sobre Maps com Múltiplos Atributos:** Modifique `var.instance_names` para um mapa:
+   ```hcl
+   variable "instances" {
+     type = map(object({ type = string, env = string }))
+     default = {
+       "web" = { type = "t2.micro", env = "dev" }
+       "api" = { type = "t3.micro", env = "prod" }
+     }
+   }
+   ```
+   Ajuste `for_each = var.instances` e configure `instance_type = each.value.type`.
+2. **Saída Mapeada:** Crie um output que retorne um mapa relacionando cada nome de servidor ao seu respectivo IP público.

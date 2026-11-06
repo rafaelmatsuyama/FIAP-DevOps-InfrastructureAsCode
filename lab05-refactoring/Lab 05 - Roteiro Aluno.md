@@ -1,50 +1,56 @@
-# LAB 05: Refatoração e Modularização (Criando Módulos no Terraform)
+# Lab 05 - Refatoração e Modularização (Criando Módulos no Terraform)
 
-Este laboratório prático guiará você na refatoração de uma infraestrutura estática para uma arquitetura modular. Você aprenderá a criar e utilizar um módulo customizado local para encapsular a criação de servidores web (`EC2`), facilitando a reutilização de código e as boas práticas de desenvolvimento em IaC. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender o conceito de módulos e os benefícios de encapsulamento em Terraform.
-- Declarar e passar variáveis de entrada (`variables.tf`) para um módulo.
-- Expor dados gerados pelo módulo usando variáveis de saída (`outputs.tf`).
-- Chamar um módulo local no manifesto principal (`main.tf`).
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, Módulos HCL  
+**Duração Estimada:** 25 minutos  
 
 ---
 
-## 🏗️ Estrutura de Arquivos do Laboratório
-A pasta do laboratório está estruturada da seguinte forma:
+## 🎯 Objetivo do Lab
+
+Capacitar o aluno a desacoplar infraestruturas monolíticas através do desenvolvimento de módulos reutilizáveis:
+1. Compreender o padrão de design e encapsulamento em módulos Terraform (*root* e *child modules*).
+2. Declarar contratos de entrada (`variables.tf`) e saídas padronizadas (`outputs.tf`).
+3. Chamar e instanciar módulos locais parametrizados no manifesto principal (`main.tf`).
+4. Reexportar outputs de recursos encapsulados para consumo pelo chamador raiz.
+
+---
+
+## 📋 Pré-requisitos & Materiais
+
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab05-refactoring
+  ```
+
+---
+
+## 🏗️ Estrutura Arquitetural do Módulo
+
 ```text
 lab05-refactoring/
-├── main.tf                 # Manifesto principal (chama o módulo)
+├── main.tf                 # Root module (orquestrador de chamadas)
 └── modules/
-    └── ec2/                # Pasta contendo o módulo customizado de EC2
-        ├── main.tf         # Declaração da instância EC2 do módulo
-        ├── variables.tf    # Variáveis de entrada aceitas pelo módulo
-        └── outputs.tf      # Variáveis de saída expostas pelo módulo
+    └── ec2/                # Child module reutilizável
+        ├── main.tf         # Recurso aws_instance parametrizado
+        ├── variables.tf    # Contrato de entrada (inputs)
+        └── outputs.tf      # Contrato de saída (outputs)
 ```
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🚀 Passo a Passo Guiado
 
-### Passo 1: Preparação do Ambiente
-1. Certifique-se de que suas credenciais temporárias da AWS Academy ainda estão ativas no arquivo `~/.aws/credentials` (conforme Passo 1 do Lab 03).
+### Passo 1: Inspeção dos Contratos do Módulo Filho
+Examine os arquivos dentro de `modules/ec2/`:
+- **`variables.tf`:** Define as variáveis obrigatórias (`ami`, `instance_type`, `security_groups` e `name`) com descrições semânticas.
+- **`main.tf`:** Cria o recurso `aws_instance.example` mapeado às variáveis recebidas (`ami = var.ami`).
+- **`outputs.tf`:** Expõe o atributo `aws_instance.example.public_ip` para fora do escopo do módulo.
 
----
-
-### Passo 2: Entender os Arquivos do Módulo `ec2`
-Navegue e analise os arquivos dentro de `modules/ec2/`:
-
-1. **`variables.tf`**: Declara as variáveis que o módulo precisa receber do arquivo pai para poder criar a instância (ex: `ami`, `instance_type`, `security_groups` e `name`).
-2. **`main.tf`**: Contém a declaração do recurso `aws_instance.example` que mapeia seus parâmetros internos aos valores das variáveis declaradas em `variables.tf` (ex: `ami = var.ami`).
-3. **`outputs.tf`**: Expõe dados da instância criada para que possam ser exibidos ou consumidos por outros recursos no arquivo raiz do projeto (ex: exportando `aws_instance.example.public_ip`).
-
----
-
-### Passo 3: Analisar a Chamada do Módulo no `main.tf` Raiz
-Abra o arquivo `main.tf` localizado na raiz da pasta `lab05-refactoring/` e observe o bloco de chamada:
-
+### Passo 2: Análise da Chamada no Módulo Raiz
+Abra o `main.tf` raiz e revise o bloco de chamada:
 ```hcl
 module "ec2_instance" {
   source = "./modules/ec2"
@@ -60,47 +66,43 @@ output "instance_public_ip" {
 }
 ```
 
-*Note que a linha `source = "./modules/ec2"` diz ao Terraform onde encontrar o código do módulo. Além disso, consumimos o output exposto pelo módulo usando a sintaxe `module.ec2_instance.public_ip`.*
-
----
-
-### Passo 4: Executar e Provisionar a Infraestrutura
-
-Abra o terminal do seu Codespaces e execute os comandos do ciclo de vida:
-
-1. **Navegar para a pasta do Lab 05:**
-   ```bash
-   cd lab05-refactoring
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-   > **Importante:** Sempre que um novo módulo local é adicionado ou modificado, o comando `terraform init` deve ser executado para que o Terraform faça o mapeamento e registro interno do módulo na pasta `.terraform/modules`.
-3. **Verificar o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-4. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Validação do Output:**
-   Ao término do `terraform apply`, verifique que o terminal imprimiu um output chamado `instance_public_ip` exibindo o endereço IP público real da máquina provisionada na AWS.
-2. **Validação no Console da AWS:**
-   Acesse o console do Amazon EC2 e verifique que uma nova instância foi iniciada com a tag `Name` igual a "Terraform Module Example".
-
----
-
-## 🧹 Limpeza do Ambiente
-Para evitar custos desnecessários na AWS Academy, remova todos os recursos provisionados executando no terminal:
+### Passo 3: Inicialização e Registro de Módulos
+Sempre que um novo módulo local é incluído, inicialize o Terraform para registrá-lo:
 ```bash
-terraform destroy
+terraform init
+terraform plan
+terraform apply -auto-approve
 ```
-*Digite **`yes`** e confirme a destruição dos recursos.*
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação do Output Exportado:**
+   Inspecione os outputs retornados pelo Terraform:
+   ```bash
+   terraform output instance_public_ip
+   ```
+   *Critério de Aceite:* O comando deve exibir o endereço IPv4 público alocado dinamicamente pela AWS.
+2. **Inspeção via AWS CLI:**
+   ```bash
+   aws ec2 describe-instances --filters "Name=tag:Name,Values='Terraform Module Example'" --query "Reservations[*].Instances[*].[InstanceId,State.Name,PublicIpAddress]" --output table
+   ```
+   *Critério de Aceite:* Uma instância no estado `running` deve ser listada com a tag correspondente.
+
+---
+
+## 🧹 Cleanup
+
+Desprovisione a instância criada pelo módulo:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Instanciação Múltipla:** Chame o módulo `ec2_instance` uma segunda vez no `main.tf` (ex: `module "ec2_backup"`) passando um nome e tipo de instância diferentes. Observe como o Terraform gerencia dois recursos idênticos sem duplicação de lógica.
+2. **Validação de Variáveis:** Adicione um bloco `validation` no `variables.tf` do módulo garantindo que `instance_type` seja restrito a `["t2.micro", "t3.micro"]`.

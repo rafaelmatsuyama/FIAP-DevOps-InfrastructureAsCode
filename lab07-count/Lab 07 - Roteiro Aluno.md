@@ -1,26 +1,36 @@
-# LAB 07: Estruturas de Repetição com Count (Criando Múltiplas Instâncias)
+# Lab 07 - Estruturas de Repetição com Count (Múltiplas Instâncias)
 
-Este laboratório prático guiará você no uso do argumento especial `count` no Terraform. Você aprenderá como automatizar o provisionamento de múltiplos recursos idênticos a partir de um único bloco de código, utilizando variáveis de índice para diferenciar os recursos criados de forma dinâmica. Este laboratório será executado diretamente na **AWS Real** (AWS Academy).
-
----
-
-## 🎯 Objetivos de Aprendizado
-- Compreender o funcionamento do argumento meta `count` no Terraform.
-- Provisionar múltiplas instâncias `EC2` com um único bloco de recursos declarativo.
-- Utilizar a variável interna `count.index` para customizar tags e propriedades de cada recurso.
+**Curso:** MBA em DevOps Engineering  
+**Plataforma / Ambiente:** GitHub Codespaces (AWS Academy / Nuvem AWS)  
+**Linguagem / Stack:** Terraform 1.9+, AWS Provider, EC2, Meta-argumento `count`  
+**Duração Estimada:** 20 minutos  
 
 ---
 
-## 🏃‍♂️ Guia Passo a Passo
+## 🎯 Objetivo do Lab
 
-### Passo 1: Preparação do Ambiente
-1. Certifique-se de que suas credenciais temporárias da `AWS Academy` estão ativas no arquivo `~/.aws/credentials` (conforme Passo 1 do Lab 03).
+Aprender a escalar o provisionamento de infraestrutura a partir de um único bloco declarativo usando o meta-argumento `count`:
+1. Compreender o funcionamento e ciclo de vida de recursos indexados via `count`.
+2. Utilizar a variável interna `count.index` para parametrização dinâmica de nomes e tags.
+3. Compreender a representação de listas indexadas no estado (`aws_instance.count_example[0]`).
+4. Analisar os limites operacionais e o comportamento de substituição por mudança de índice.
 
 ---
 
-### Passo 2: Analisar a Estrutura no `main.tf`
-Abra o arquivo `main.tf` na pasta `lab07-count/` e analise o recurso de instância:
+## 📋 Pré-requisitos & Materiais
 
+- Credenciais ativas da **AWS Academy** em `~/.aws/credentials`.
+- Terminal posicionado no diretório:
+  ```bash
+  cd lab07-count
+  ```
+
+---
+
+## 🚀 Passo a Passo Guiado
+
+### Passo 1: Análise do Recurso no `main.tf`
+Abra o arquivo `main.tf` e observe a declaração indexada:
 ```hcl
 resource "aws_instance" "count_example" {
   count         = 3
@@ -32,48 +42,50 @@ resource "aws_instance" "count_example" {
   }
 }
 ```
+- **`count = 3`:** Instancia o bloco 3 vezes sequencialmente.
+- **`${count.index + 1}`:** Acessa o índice base zero (0, 1, 2) e gera os nomes `Instance 1`, `Instance 2` e `Instance 3`.
 
-*   `count = 3` informa ao Terraform para instanciar esse bloco 3 vezes.
-*   `${count.index + 1}` utiliza o índice da iteração (começando do zero) para nomear as instâncias dinamicamente como "Instance 1", "Instance 2" e "Instance 3".
-
----
-
-### Passo 3: Executar os Comandos do Terraform
-No terminal do seu Codespaces, navegue para a pasta e aplique a infraestrutura:
-
-1. **Navegar para a pasta do Lab 07:**
-   ```bash
-   cd lab07-count
-   ```
-2. **Inicializar o Terraform:**
-   ```bash
-   terraform init
-   ```
-3. **Verificar o Planejamento:**
-   ```bash
-   terraform plan
-   ```
-   > **Nota Visual:** Repare no output do planejamento que o Terraform lista 3 recursos a serem criados, identificados como `aws_instance.count_example[0]`, `aws_instance.count_example[1]` e `aws_instance.count_example[2]`.
-4. **Aplicar o Provisionamento:**
-   ```bash
-   terraform apply
-   ```
-   *Digite **`yes`** e aperte `Enter` para confirmar.*
-
----
-
-## 🔍 Pontos de Validação Prática
-
-1. **Verificar Instâncias no Console:**
-   Acesse o console do Amazon EC2 e valide que existem 3 novas instâncias executando com as tags de nome correspondentes: `Instance 1`, `Instance 2` e `Instance 3`.
-2. **Entender a dependência do índice:**
-   Se você alterar o `count = 3` para `count = 2` e rodar um `terraform apply`, note que o Terraform destruirá especificamente a instância de índice 2 (`aws_instance.count_example[2]`), mantendo as duas primeiras intactas.
-
----
-
-## 🧹 Limpeza do Ambiente
-Para evitar cobranças, remova a infraestrutura executando:
+### Passo 2: Inicialização e Planejamento
 ```bash
-terraform destroy
+terraform init
+terraform plan
 ```
-*Digite **`yes`** para confirmar a destruição.*
+*Observe que o Terraform identifica cada recurso com sua notação de array: `aws_instance.count_example[0]`, `[1]` e `[2]`.*
+
+### Passo 3: Provisionamento em Lote
+```bash
+terraform apply -auto-approve
+```
+
+---
+
+## 🧪 Validação & Critérios de Aceite
+
+1. **Validação via AWS CLI:**
+   Liste as instâncias criadas com suas respectivas tags de índice:
+   ```bash
+   aws ec2 describe-instances --filters "Name=tag:Name,Values='Instance *'" --query "Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key=='Name'].Value|[0]]" --output table
+   ```
+   *Critério de Aceite:* Devem figurar 3 instâncias com estado `running` e nomes `Instance 1`, `Instance 2` e `Instance 3`.
+2. **Inspeção de Estado Indexado:**
+   ```bash
+   terraform state list
+   ```
+   *Critério de Aceite:* Exibe explicitamente as 3 instâncias separadas por colchetes de índice.
+
+---
+
+## 🧹 Cleanup
+
+Desprovisione as instâncias para liberar a conta de testes:
+```bash
+terraform destroy -auto-approve
+cd ..
+```
+
+---
+
+## 💡 Desafios Complementares
+
+1. **Escalação Condicional:** Declare uma variável booleana `variable "enable_monitoring" { default = true }`. Use a expressão ternária `count = var.enable_monitoring ? 1 : 0` para criar um recurso condicionalmente.
+2. **Exportação de Lista de IPs:** Adicione um bloco `output "instance_ips"` que exponha a lista com todos os IPs públicos criados usando a sintaxe splat: `value = aws_instance.count_example[*].public_ip`.
