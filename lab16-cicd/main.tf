@@ -103,7 +103,7 @@ resource "aws_instance" "web_server" {
               apt-get install -y nginx
               systemctl start nginx
               systemctl enable nginx
-              echo "<h1>Deploy Automatizado via GitHub Actions & Terraform (MBA DevOps FIAP)</h1>" > /var/www/html/index.html
+              echo "<h1>Deploy Automatizado via GitHub Actions & Terraform (MBA DevOps)</h1>" > /var/www/html/index.html
               EOF
 
   tags = {
