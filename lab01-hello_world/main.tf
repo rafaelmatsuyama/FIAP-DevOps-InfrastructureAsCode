@@ -20,6 +20,6 @@ resource "random_id" "unique_suffix" {
 
 # Resource: Local text file created on disk
 resource "local_file" "hello_fiap" {
-  content  = "Olá, Engenheiro DevOps FIAP! Identificador exclusivo de infraestrutura: ${random_id.unique_suffix.hex}\n"
+  content  = "Hello, FIAP DevOps Engineer! Unique infrastructure identifier: ${random_id.unique_suffix.hex}\n"
   filename = "${path.module}/hello_world.txt"
 }
