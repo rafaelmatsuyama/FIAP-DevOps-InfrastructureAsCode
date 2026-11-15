@@ -7,12 +7,12 @@ terraform {
   }
 }
 
-# OPÇÃO A: DEPLOY NA AWS REAL
+# OPTION A: DEPLOY ON REAL AWS (AWS ACADEMY)
 provider "aws" {
   region = "us-east-1"
 }
 
-# OPÇÃO B: DEPLOY NO LOCALSTACK (CONTINGÊNCIA)
+# OPTION B: DEPLOY ON LOCALSTACK (CONTINGENCY)
 # provider "aws" {
 #   region                      = "us-east-1"
 #   access_key                  = "mock"
@@ -21,17 +21,16 @@ provider "aws" {
 #   skip_metadata_api_check     = true
 #   skip_requesting_account_id  = true
 #   endpoints {
-#     ec2      = "http://localhost:4566"
-#     s3       = "http://localhost:4566"
-#     dynamodb = "http://localhost:4566"
+#     ec2 = "http://localhost:4566"
 #   }
 # }
 
 resource "aws_security_group" "allow_ssh_http" {
   name        = "allow_ssh_http"
   description = "Allow SSH and HTTP traffic"
-  # vpc_id      = "vpc-xxxxxxxxxxxxxxxxx" # Substitua pelo ID da sua VPC
+  # vpc_id      = "vpc-xxxxxxxxxxxxxxxxx" # Optional: replace with your custom VPC ID
 
+  # Lab simplicity: restrict SSH CIDR to your IP/VPN or use AWS SSM in production
   ingress {
     from_port   = 22
     to_port     = 22
@@ -55,11 +54,21 @@ resource "aws_security_group" "allow_ssh_http" {
 }
 
 resource "aws_instance" "example" {
-  ami           = "ami-0de716d6197524dd9" # Substitua pela AMI da sua região
-  instance_type = "t2.micro"
-  security_groups = [aws_security_group.allow_ssh_http.name]
+  ami                    = "ami-0de716d6197524dd9" # Replace with the target region AMI if running outside us-east-1
+  instance_type          = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
 
   tags = {
     Name = "Terraform Example"
   }
+}
+
+output "instance_id" {
+  description = "Provisioned EC2 instance identifier"
+  value       = aws_instance.example.id
+}
+
+output "instance_public_ip" {
+  description = "Public IPv4 address allocated to the EC2 instance"
+  value       = aws_instance.example.public_ip
 }
