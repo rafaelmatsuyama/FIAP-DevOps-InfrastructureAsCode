@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-rafael-matsuyama123"  # Usar o nome do bucket criado pelo Terraform
-    key            = "terraform.tfstate" # Nome do arquivo de estado
-    region         = "us-east-1"      # Substitua pela sua região
-    dynamodb_table = "terraform-locks" # Usar o nome da tabela DynamoDB criada pelo Terraform
-    encrypt        = true             # Habilitar a criptografia do State no S3
+    bucket         = "terraform-state-fiap-your-initials" # Match the S3 bucket name created in main.tf
+    key            = "terraform.tfstate"                  # State file key path inside the bucket
+    region         = "us-east-1"                          # Replace with your target AWS region
+    dynamodb_table = "terraform-locks"                    # Match the DynamoDB lock table created in main.tf
+    encrypt        = true                                 # Enable server-side encryption for remote state
   }
 }
